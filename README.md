@@ -2,7 +2,7 @@
 
 [![video](assets/thumbnail.png)](https://www.youtube.com/watch?v=kzcI5F4tGiU)
 
-An AI learning system from the video [How I Use AI to Learn Things](https://www.youtube.com/watch?v=kzcI5F4tGiU) by Amos Blomqvist. It was first built for [pi](https://github.com/earendil-works/pi). This fork packages it as a **Claude Code plugin**.
+An AI learning system from the video [How I Use AI to Learn Things](https://www.youtube.com/watch?v=kzcI5F4tGiU) by Amos Blomqvist. This fork is a **Claude Code plugin**.
 
 ## What's in it
 
@@ -15,14 +15,6 @@ An AI learning system from the video [How I Use AI to Learn Things](https://www.
 | `agents/mermaid-maker.md`, `agents/svg-maker.md` | `learn:mermaid-maker` and `learn:svg-maker` write a diagram, render it, look at the PNG, fix it until it's correct, then publish it to `viz/`. |
 | `hooks/hooks.json` + `scripts/md_log.py` | The md-log hooks. They log your prompts, Claude's text, and quiz questions and answers. They do nothing until you link a file. |
 | `scripts/render.sh` | Renders Mermaid and SVG to PNG for the maker agents. |
-
-### How the pi pieces map
-
-- **`quiz` extension** → **AskUserQuestion**, used with a grading protocol written into the teach skill. Claude decides the answer before asking, shuffles the options itself, adds an `I don't know` option, then grades with ✓/✗ and an explanation. Typing in "Other" works as the free-text note.
-- **`ask-user-question` extension** → the built-in AskUserQuestion.
-- **`md-log` extension** → plugin hooks (UserPromptSubmit, PreToolUse/PostToolUse on AskUserQuestion, Stop).
-- **`visual-tools` extension** → `scripts/render.sh`, plus the agents' Write, Edit and Read tools. Read lets the agent see the PNG.
-- **pi subagents** → Claude Code subagents.
 
 ## Install
 
@@ -79,6 +71,7 @@ Diagrams go to `<project>/viz/`. Lessons embed them as `![[viz-….png|500]]`.
 
 ## Notes
 
+- Quizzes use AskUserQuestion. Claude decides the answer before asking, shuffles the options, adds an `I don't know` option, then grades with ✓/✗ and an explanation. Type in "Other" to give a free-text answer.
 - The system works without subagents, because the main session does the teaching. You lose fact checking and visuals.
 - The teaching skill was written for one learner. Edit `skills/teach/SKILL.md` to fit how you learn.
 - md-log stores its link state in `<project>/.claude/learn-md-log.json`.
