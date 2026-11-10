@@ -2,38 +2,83 @@
 
 [![video](assets/thumbnail.png)](https://www.youtube.com/watch?v=kzcI5F4tGiU)
 
-My AI learning system from this video: [How I Use AI to Learn Things](https://www.youtube.com/watch?v=kzcI5F4tGiU).
-
-This is a personal system I built for myself, shared as-is. Built as a pi configuration: the teaching philosophy encoded in a skill, a few small extensions, and agent definitions.
+An AI learning system from the video [How I Use AI to Learn Things](https://www.youtube.com/watch?v=kzcI5F4tGiU) by Amos Blomqvist. It was first built for [pi](https://github.com/earendil-works/pi). This fork packages it as a **Claude Code plugin**.
 
 ## What's in it
 
-- `skills/teach/` — the philosophy and the process
-- `skills/visualize/` — adds a correct, minimal diagram to a lesson when an idea is clearer as a picture
-- `extensions/ask-user-question/` — the agent asks you questions through a UI popup
-- `extensions/quiz/` — graded questions with instant feedback (✓/✗, correct answer, explanation)
-- `extensions/md-log/` — link a markdown file to the session
-- `extensions/visual-tools/` — tools for visualization subagents
-- `agents/` — `researcher`, `svg-maker`, `mermaid-maker`: the subagents the system delegates to
+| Piece | What it does |
+|---|---|
+| `skills/teach/` | The philosophy and the process: unconditional truths first, "how could I have discovered this?", probe → plan → teach. Loads automatically whenever Claude is teaching or explaining. Also `/learn:teach`. |
+| `skills/visualize/` | Adds one correct, minimal diagram to a lesson when an idea is clearer as a picture. |
+| `skills/md-log/`, `skills/md-unlog/` | `/learn:md-log <file.md>` mirrors the session into a markdown file (e.g. in Obsidian) so LaTeX, Mermaid and images render. `/learn:md-unlog` stops it. |
+| `agents/researcher.md` | `learn:researcher` checks facts and scopes a topic with WebSearch and WebFetch. |
+| `agents/mermaid-maker.md`, `agents/svg-maker.md` | `learn:mermaid-maker` and `learn:svg-maker` write a diagram, render it, look at the PNG, fix it until it's correct, then publish it to `viz/`. |
+| `hooks/hooks.json` + `scripts/md_log.py` | The md-log hooks. They log your prompts, Claude's text, and quiz questions and answers. They do nothing until you link a file. |
+| `scripts/render.sh` | Renders Mermaid and SVG to PNG for the maker agents. |
+
+### How the pi pieces map
+
+- **`quiz` extension** → **AskUserQuestion**, used with a grading protocol written into the teach skill. Claude decides the answer before asking, shuffles the options itself, adds an `I don't know` option, then grades with ✓/✗ and an explanation. Typing in "Other" works as the free-text note.
+- **`ask-user-question` extension** → the built-in AskUserQuestion.
+- **`md-log` extension** → plugin hooks (UserPromptSubmit, PreToolUse/PostToolUse on AskUserQuestion, Stop).
+- **`visual-tools` extension** → `scripts/render.sh`, plus the agents' Write, Edit and Read tools. Read lets the agent see the PNG.
+- **pi subagents** → Claude Code subagents.
 
 ## Install
 
-This repo **is** a `.pi` directory. From your learning project's root:
+From GitHub:
 
-```bash
-git clone https://github.com/amosblomqvist/learn .pi
+```
+/plugin marketplace add phenderson0/learn
+/plugin install learn@learn-marketplace
 ```
 
-Then open pi in that directory. (Or copy the pieces you want into your existing project config.)
+From this folder, without pushing:
+
+```
+/plugin marketplace add /path/to/learn
+/plugin install learn@learn-marketplace
+```
+
+To try it for one session: `claude --plugin-dir /path/to/learn`.
+
+### Remote sessions (Claude Code on the web)
+
+Cloud sessions don't read your local `~/.claude`. They read `.claude/settings.json` in the repo you open. Add this to any project where you want the plugin:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "learn-marketplace": { "source": { "source": "github", "repo": "phenderson0/learn" } }
+  },
+  "enabledPlugins": { "learn@learn-marketplace": true }
+}
+```
 
 ## Requirements
 
-- [pi](https://github.com/earendil-works/pi)
-- A subagent implementation, so the system can spawn the researcher and the visual makers. Recommended: [pi-interactive-subagents](https://github.com/amosblomqvist/pi-interactive-subagents) (tmux only). With it, everything works out of the box. Any other implementation works too, but expect to adapt the agent definitions, e.g. `agents/researcher.md` lists `safe_bash` in its tools, which is specific to that extension.
-- `ask-user-question` — use the copy bundled here. If your setup already has an `ask-user-question` extension, use **this** one in its place. Popups from different extensions serialize through a shared UI lock, which only works when it's the same implementation.
+- **Claude Code** and **python3** (python3 runs the md-log hook).
+- **Optional, for diagrams.** Without these, `visualize` tells you once and the lesson continues in prose.
+  - Mermaid: Node.js. `npx` fetches `@mermaid-js/mermaid-cli`. Chrome or Chromium is also needed; set `PUPPETEER_EXECUTABLE_PATH` to use a specific one.
+  - SVG: `rsvg-convert`, ImageMagick, or `pip install cairosvg`.
+  - On Debian/Ubuntu/WSL: `sudo apt install nodejs npm librsvg2-bin chromium`
+  - To see what's installed: `bash scripts/render.sh check`
+  - **WSL notes:**
+    - If `apt` fails with `Network is unreachable` on IPv6 addresses, force IPv4: `echo 'Acquire::ForceIPv4 "true";' | sudo tee /etc/apt/apt.conf.d/99force-ipv4`
+    - `sudo npm i -g` can skip mermaid-cli's Chrome download. Install it as your own user:
+      `sudo apt install -y unzip libasound2t64` then `npx -y @puppeteer/browsers install chrome-headless-shell@<version in the mmdc error> --path ~/.cache/puppeteer`
+    - If Chrome still won't start, `ldd ~/.cache/puppeteer/chrome-headless-shell/*/*/chrome-headless-shell | grep "not found"` lists any other missing libraries.
+
+## Usage
+
+1. Open Claude Code in a learning project. That folder works best if it is, or sits inside, an Obsidian vault.
+2. Optional: `/learn:md-log notes/tcp.md`, then open that file in Obsidian.
+3. Ask to learn something, such as "teach me how TCP works". Claude quizzes you to find the edge of what you know, asks what you're aiming for, shows a plan and a dependency map for you to approve, then teaches one node at a time.
+
+Diagrams go to `<project>/viz/`. Lessons embed them as `![[viz-….png|500]]`.
 
 ## Notes
 
-You can run the system without subagents. The main session does the teaching. You just lose the researcher (truth verification) and the generated visuals.
-
-The teaching skill is written for one learner (me). Edit the skill to fit how you learn best.
+- The system works without subagents, because the main session does the teaching. You lose fact checking and visuals.
+- The teaching skill was written for one learner. Edit `skills/teach/SKILL.md` to fit how you learn.
+- md-log stores its link state in `<project>/.claude/learn-md-log.json`.

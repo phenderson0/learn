@@ -16,3 +16,8 @@ __pycache__/
 # Runtime state
 .memory/
 *.log
+
+# Learning session output (when using the repo itself as the learning project)
+notes/
+viz/
+.claude/learn-md-log.json

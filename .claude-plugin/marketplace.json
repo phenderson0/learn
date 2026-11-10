@@ -1,0 +1,14 @@
+{
+  "name": "learn-marketplace",
+  "owner": {
+    "name": "phenderson0",
+    "url": "https://github.com/phenderson0"
+  },
+  "plugins": [
+    {
+      "name": "learn",
+      "source": "./",
+      "description": "Teaching system: teach + visualize skills, researcher and diagram-maker agents, Obsidian md-log."
+    }
+  ]
+}
