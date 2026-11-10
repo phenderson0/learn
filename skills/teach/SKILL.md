@@ -1,6 +1,6 @@
 ---
 name: teach
-description: Teach the user anything so it actually locks in and is understood, not just memorized. Use ANY time you're explaining or teaching them something — even a quick explanation. Runs a probe → plan → teach loop built on two principles (unconditional truths first; "how could I have discovered this?") with graded quizzes via AskUserQuestion.
+description: Teach the user anything so it actually locks in and is understood, not just memorized. Use ANY time you're explaining or teaching them something — even a quick explanation. Runs a probe → plan → teach → consolidate loop built on two principles (unconditional truths first; "how could I have discovered this?") with graded multiple-choice quizzes and short-answer questions.
 ---
 
 # Teaching
@@ -64,9 +64,9 @@ Choose per topic and per their apparent energy:
 
 When unsure, lean Socratic for things they can clearly reason about; otherwise narrate.
 
-## Tools in Claude Code: `quiz` and `ask`
+## Question modes: `quiz`, `short` and `ask`
 
-This skill talks about two question tools. Both are **AskUserQuestion**, used in two distinct ways — keep the boundary clean:
+This skill uses three kinds of question. `quiz` and `ask` are **AskUserQuestion**, used in two distinct ways. `short` is a plain chat question. Keep the boundaries clean:
 
 - **`ask`** — a plain AskUserQuestion for questions with *no* right answer: goals, preferences, direction, what they want next. Put a recommended option first with "(Recommended)" only here.
 - **`quiz`** — a *graded* question. AskUserQuestion has no grading, so you run the protocol yourself:
@@ -77,10 +77,17 @@ This skill talks about two question tools. Both are **AskUserQuestion**, used in
   5. **Grade right after the answer**, in this shape: `✓ Correct` / `✗ Incorrect — correct answer: <label>`, then the explanation (why the right one is right, and — if they missed — what the specific distractor they picked reveals).
   6. **`I don't know`** is a genuine gap, not a wrong answer — teach into it, never mark it ✗. A free-text "Other" reply is their **note**: read what they were thinking and let it steer the follow-up (grade it if it states an answer).
   7. Don't reveal the answer in the question text, header, or anything you write before the call.
+- **`short`** — a *graded* short-answer question the user answers in their own words. Multiple choice tests recognition: with the right answer in front of them, people can pick it without being able to produce it. Short answer tests whether they can produce it. It shows the edge of their knowledge more clearly, and misconceptions surface in their own words.
+  1. **Fix the answer key before asking.** Decide the 1–3 key points a correct answer must contain. Commit to them; don't loosen or tighten them after reading the reply.
+  2. **Ask in plain chat, then stop and wait.** One question per turn, on its own line, starting with `**Short answer:**`. Say a sentence or two is enough and "I don't know" is fine. Don't use AskUserQuestion for this.
+  3. **Ask for production, not a term.** Good: "why…?", "what would go wrong if…?", "explain in your own words…", "what does X follow from?", "predict what happens when…". If a one-word answer would do, it's a `quiz` question.
+  4. **Grade right after the reply:** `✓ Correct` / `◐ Partial` / `✗ Incorrect`. Name which key points they hit and which they missed, then give a short model answer. Grade the idea, not the wording: a correct idea in clumsy words is ✓.
+  5. Same as `quiz`: "I don't know" is a gap to teach into, not a ✗, and nothing before the question hints at the answer.
+  6. **Use it sparingly.** It costs the user more effort than a click. Where it goes is set by the phases below: 1–2 in Probe, a few in Consolidate, and in `review` sessions. Use `quiz` for everything else.
 
-## The process: probe → plan → teach
+## The process: probe → plan → teach → consolidate
 
-The two principles are *how* you teach. This is *when* — the shape of a teaching session. Run all three phases in order, every time; scale each phase's *size* to the topic, never its *shape*.
+The two principles are *how* you teach. This is *when* — the shape of a teaching session. Run all four phases in order, every time; scale each phase's *size* to the topic, never its *shape*.
 
 **Accuracy is non-negotiable — verify, don't wing it from memory.** They have to be able to trust the teacher completely; one confidently-delivered hallucination poisons that. Working from memory alone is where LLMs invent things, so: **the moment you are even slightly unsure of any fact, name, date, formula, definition, or claim, stop and confirm it with a quick `learn:researcher` subagent (Agent tool) before you say it.** Pausing to verify is always acceptable — accuracy beats flow, every time. And if a check changes or corrects what you were about to teach, say so plainly rather than quietly papering over it. A wrong unconditional truth or a wrong "discovered" step doesn't just mislead — it corrupts every node built on top of it.
 
@@ -107,6 +114,8 @@ You can't teach into their zone of proximal development without knowing where it
 - **Binary-search the edge.** When they nail a question, jump the difficulty up *sharply* — don't inch forward. When they miss, you've bracketed the edge from above; narrow back in to pin exactly where it sits. This finds the frontier fast, without a hundred timid questions.
 - **One wrong answer is not "done" either — and it is *not* a cue to start teaching.** A single miss is one coordinate, and you don't yet know its kind: a careless slip, a narrow isolated gap, or a systematic misconception. Probe *around* it to characterize it before concluding anything. Misconceptions matter most — a confidently-held wrong model has to be dislodged, not merely topped up — so when you catch one, dig into its extent rather than moving on.
 - **Map every strand the lesson rests on.** A topic has several prerequisite threads, and the edge is a frontier across all of them, not a single point. Probe each thread the explanation will lean on and find where each one runs out. Bound this by *relevance to the goal*: map every corner the teaching will depend on, and don't bother with corners it won't.
+
+**Open with one or two `short` questions.** Before the multiple-choice mapping, ask them to explain the core of the topic, or the strand it most depends on, in their own words. For example: "In a sentence or two, what do you think happens when you load a web page?" Their own phrasing shows the edge faster than options do. It shows what they reach for, which terms they use correctly, and which misconceptions they hold with confidence. Use what comes out to aim the `quiz` questions that follow. Don't go past two: the binary search runs on `quiz`.
 
 Do not advance to Phase 2 until, for each goal-relevant strand, you can state concretely both what they have and where it ends. This is how nuance is handled: many small graded questions, each adapted to the last answer — not one big caveated one. Every `quiz` carries the correct answer, so you learn *exactly where* they go wrong, not just that they did.
 
@@ -149,6 +158,24 @@ For **every node** (each unconditional truth *and* each non-trivial reasoning st
 Repeat this full loop per node — don't front-load all the foundations once at the start and then stop checking. Any time a new unconditional truth is needed mid-session, it goes through motivate → establish → connect → quiz-check just like a derived step would.
 
 If you catch yourself asserting a fact they'd have to take on faith — foundational or not — stop: either motivate it and confirm it lands, or ground it in something already established. Unmotivated, unconfirmed facts don't lock in — that's the whole point.
+
+### Phase 4 — Consolidate and record
+
+When the last node is in place, before wrapping up:
+
+1. **A few `short` questions across the whole graph**: 2–4, scaled to the lesson. Aim at the edges, not single nodes: "why does X follow from Y?", "how does the root lead to the goal?", or a new case that needs several nodes at once. A whole-graph miss means an edge didn't form. Re-derive that connection, then move on.
+2. **Record the lesson in the review ledger.** The concepts are the nodes of the dependency map: the roots and the derived steps that matter. Leave out trivial ones. Give each a name and a one-line summary that states the idea, and pass the linked md-log or summary note if there is one:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/review.py" add <<'EOF'
+   {"topic": "TCP basics", "note": "notes/tcp.md",
+    "concepts": [{"name": "Packets", "summary": "All communication between computers is done by sending packets."}]}
+   EOF
+   ```
+
+   Tell the user in one line that it's recorded and `/learn:review` will bring it back later.
+
+Phase 4 is for real lessons, the ones that went through Plan. A quick one-off explanation gets neither the questions nor a ledger entry.
 
 ## Formatting — math renders as LaTeX
 

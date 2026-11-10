@@ -9,11 +9,13 @@ An AI learning system from the video [How I Use AI to Learn Things](https://www.
 | Piece | What it does |
 |---|---|
 | `skills/teach/` | The philosophy and the process: unconditional truths first, "how could I have discovered this?", probe → plan → teach. Loads automatically whenever Claude is teaching or explaining. Also `/learn:teach`. |
+| `skills/review/` | `/learn:review [topic]` quizzes you on concepts from earlier lessons, mostly with short-answer questions, and re-teaches what slipped. With no topic it picks the oldest concepts that are due. |
 | `skills/visualize/` | Adds one correct, minimal diagram to a lesson when an idea is clearer as a picture. |
 | `skills/md-log/`, `skills/md-unlog/` | `/learn:md-log <file.md>` mirrors the session into a markdown file (e.g. in Obsidian) so LaTeX, Mermaid and images render. `/learn:md-unlog` stops it. |
 | `agents/researcher.md` | `learn:researcher` checks facts and scopes a topic with WebSearch and WebFetch. |
 | `agents/mermaid-maker.md`, `agents/svg-maker.md` | `learn:mermaid-maker` and `learn:svg-maker` write a diagram, render it, look at the PNG, fix it until it's correct, then publish it to `viz/`. |
 | `hooks/hooks.json` + `scripts/md_log.py` | The md-log hooks. They log your prompts, Claude's text, and quiz questions and answers. They do nothing until you link a file. |
+| `scripts/review.py` | The concept ledger: records each lesson's concepts and schedules reviews. |
 | `scripts/render.sh` | Renders Mermaid and SVG to PNG for the maker agents. |
 
 ## Install
@@ -65,13 +67,16 @@ Cloud sessions don't read your local `~/.claude`. They read `.claude/settings.js
 
 1. Open Claude Code in a learning project. That folder works best if it is, or sits inside, an Obsidian vault.
 2. Optional: `/learn:md-log notes/tcp.md`, then open that file in Obsidian.
-3. Ask to learn something, such as "teach me how TCP works". Claude quizzes you to find the edge of what you know, asks what you're aiming for, shows a plan and a dependency map for you to approve, then teaches one node at a time.
+3. Ask to learn something, such as "teach me how TCP works". Claude quizzes you to find the edge of what you know, asks what you're aiming for, shows a plan and a dependency map for you to approve, then teaches one node at a time. It ends with a few short-answer questions across the whole lesson and records the lesson's concepts for review.
+4. Later: `/learn:review` to review the oldest concepts that are due, or `/learn:review the TCP stuff` to pick a topic yourself.
 
 Diagrams go to `<project>/viz/`. Lessons embed them as `![[viz-….png|500]]`.
 
 ## Notes
 
-- Quizzes use AskUserQuestion. Claude decides the answer before asking, shuffles the options, adds an `I don't know` option, then grades with ✓/✗ and an explanation. Type in "Other" to give a free-text answer.
+- Short-answer questions are asked in plain chat: answer in your own words. Lessons use one or two at the start to find the edge of what you know and a few at the end.
+- Multiple-choice quizzes use AskUserQuestion. Claude decides the answer before asking, shuffles the options, adds an `I don't know` option, then grades with ✓/✗ and an explanation. Type in "Other" to give a free-text answer.
 - The system works without subagents, because the main session does the teaching. You lose fact checking and visuals.
 - The teaching skill was written for one learner. Edit `skills/teach/SKILL.md` to fit how you learn.
 - md-log stores its link state in `<project>/.claude/learn-md-log.json`.
+- The review ledger is `<project>/.claude/learn-ledger.json`. A concept is first due 7 days after the lesson. Each pass doubles the wait (7, 14, 28 … up to 180 days) and a fail resets it to 7, so recently reviewed concepts stay out of the way. Commit it in your learning project if you want reviews to follow you into remote sessions.

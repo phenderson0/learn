@@ -21,3 +21,4 @@ __pycache__/
 notes/
 viz/
 .claude/learn-md-log.json
+.claude/learn-ledger.json
