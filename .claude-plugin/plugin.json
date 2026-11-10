@@ -1,6 +1,6 @@
 {
   "name": "learn",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A teaching system for Claude Code: unconditional-truths-first, discovery-motivated lessons with probe → plan \u2192 teach, graded quizzes, a fact-checking researcher, verified diagrams, and an optional Obsidian session log. Fork of amosblomqvist/learn, originally created by Amos Blomqvist.",
   "author": {
     "name": "phenderson0",
