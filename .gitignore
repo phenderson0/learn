@@ -20,5 +20,6 @@ __pycache__/
 # Learning session output (when using the repo itself as the learning project)
 notes/
 viz/
+distill/
 .claude/learn-md-log.json
 .claude/learn-ledger.json
