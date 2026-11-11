@@ -101,6 +101,46 @@ These need an **open-weight model run locally** that returns log-probabilities f
 - **Equivalent-learner tests.** Compare normalised gain on pre/post tests, using equivalence testing (TOST) rather than "no significant difference".
 - **Concept maps** (Novak). Open-ended link labels, used in education.
 
+## Decisions from the Q&A (2026-11-10)
+
+Design only: none of these is built yet. See `docs/PLAN.md` for the order of work.
+
+**Pick 1: memory baseline.** Yes, run it.
+- **Runs:** title-only, scrambled pyramid and real pyramid, reporting the lift. Also add the **canary test**.
+- **Purpose:** a sanity check that the concept works and the pyramid actually helps the agent.
+- **Weight:** it matters less long-term. Distill's main targets are sources *not* in the model's training data. For material the model already knows, its prior knowledge is expected and acceptable.
+
+**Pick 2: size ratio.** Yes. The build reports xz(store) / xz(source) automatically.
+- **Goal for now: 1:1.** The other session's testing suggests that's achievable.
+- **Later:** a better schema, or a pyramid-specific compression scheme, may go lower.
+- (An earlier "1:5" remark meant "possibly up to 5× bigger"; the user withdrew it as likely an exaggeration.)
+
+**Pick 3: extractor panel.** Yes. Use a panel of 3 or more extractors with cached claim sets.
+- **Keep both** the core/supporting/illustrative labels and the vote count. They measure different things.
+- **Read a split vote as a warning.** A claim not every extractor found is either not core, or a sign of an extractor accuracy problem.
+- **Cost:** acceptable, because it's paid once per source.
+- **Effort setting:** choose the number of extractors by kind of material and compute budget.
+- **Open:** look for ways to make the panel cheaper.
+
+**Pick 4: generativity test.** It becomes a **standard test** of representation quality, run with several different holdouts. The specifics are still open.
+- **Hide different kinds of content:** conclusions, examples, whole sections. Maybe two or three holdout sets per source.
+- **Test in both directions:**
+  - **Upward:** from the base claims, can an agent reach the apex?
+  - **Downward:** from the apex, can it reach the base claims and premises?
+
+**Pick 5: purpose field.** Yes, as **loosely structured free text**, not a fixed list.
+- **Why not a fixed list:** a list would defeat the point.
+- **Who sets it:** agents can't reliably infer form and purpose from the text alone, and the user usually has an agenda. So the user supplies it, perhaps with prompts.
+- **Long horizon:** several pyramids with different purposes (the literal content, the meaning, what a reader takes away), combined into the single pyramid the user is given. This addresses the limits of any one pyramid but is expensive. See `docs/ROADMAP.md`.
+
+**Pick 6: metrics with no judge.** Split into two horizons.
+- **Near term, as a module:** a **weaker-reader baseline**. A low-effort, smaller or legacy model regenerates or answers with and without the pyramid. How much the pyramid helps it measures how effective the pyramid is, and it needs no log-prob access.
+- **Long horizon:** a more objective **verification figure** for how well the pyramid represents its source:
+  - log-prob/MDL metrics from a local model,
+  - meta-analysis across tests.
+
+  It belongs near the end of the project. See `docs/ROADMAP.md`.
+
 ## Suggested first picks
 
 Picked for cost against payoff:

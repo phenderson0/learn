@@ -40,6 +40,21 @@ A digital representation of information that is **neither storage compression no
 - [ ] **"Help me understand" for codebases and projects.** For people who vibe-coded further than they understand. Distill a codebase in agent and human modes, then teach it through `learn`, fully, losing nothing important, until the user could explain the project to someone else. Also applies to books.
 - [ ] **Live distillation during a Claude Code session.** Build or update nodes as the session works. Plugin hooks on Edit/Write and Stop could append to a session pyramid, so you can go back and understand what the model did and why.
 
+## Long horizon (distill)
+
+- [ ] **Verification figure.** One objective, ideally non-judge number for how well a pyramid represents its source:
+  - log-probability and MDL metrics from a local open-weight model (`docs/distill-research.md`, "Non-judge metrics"),
+  - meta-analysis across the test suite.
+
+  Near the end of the project. The near-term stand-in is the weaker-reader baseline (pick 6).
+- [ ] **Combined multi-purpose pyramids.** Build several pyramids of one source, each with its own `purpose`:
+  - the literal content,
+  - the author's meaning,
+  - what a reader takes away,
+  - form.
+
+  Merge them into the single pyramid the user is given. This addresses the limits of any one rendering, as with translation (`docs/distill-essence.md` §2). It is expensive.
+
 ## learn features
 
 - [ ] **Assessment by projects, not just questions.** Beyond short-answer and multiple-choice quizzes: show understanding by *using* it to make something new. This needs design per domain:
