@@ -180,7 +180,7 @@ Like strength, the design is small local measurements plus arithmetic.
 | `explain` | say how the node's inputs produce it (bases, T2) | short answer: "Why does that follow?" |
 | `apply` | use it on a case the source doesn't cover | a new case, or a project (`docs/ROADMAP.md`) |
 
-The levels are cumulative: passing a higher level also counts as recall evidence. A node's *grasp* is the highest level with confidence ≥ 0.7.
+The levels are cumulative: a pass at a higher level also counts as evidence at every level below it. A node's *grasp* is the highest level with confidence ≥ 0.7.
 
 ### Evidence
 
@@ -219,9 +219,13 @@ Idea for later: recompute the apex strength with the learner's agreement standin
 
 ### Stable ids
 
-Ledger keys use node ids, so renaming a node orphans its evidence. Plan: `distill_build.py` keeps a `renames` map in the manifest, and the ledger follows it (not built yet). Splitting or merging nodes across rebuilds is covered by §12.
+Ledger keys use node ids, so renaming a node orphans its evidence. When a node is renamed, add `"renames": {"old-id": "new-id"}` to the manifest; `review.py` moves the evidence the next time it loads the pyramid. Splitting or merging nodes across rebuilds is covered by §12.
 
-The constants (0.7, 0.5, the importance weights) are v0 placeholders.
+**Implementation:** `scripts/confidence.py` does the arithmetic. `scripts/review.py` has the commands `frontier`, `nodes`, `node-mark`, `agree` and `calibration`, and `pick` includes due nodes. The teach and review skills use them (teach: "Teaching from a distill pyramid"). Two details that aren't spelled out above:
+- Prerequisites for the frontier include the target of an `objects`, `rebuts`, `qualifies` or `applies` edge: an objection is taught after the claim it attacks.
+- `apply` is only targeted on `idea` nodes, at half priority.
+
+The constants (0.7, 0.5, the importance weights, the apply discount) are v0 placeholders.
 
 ## 5. Structural rules
 

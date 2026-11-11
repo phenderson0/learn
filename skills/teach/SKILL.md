@@ -84,6 +84,7 @@ This skill uses three kinds of question. `quiz` and `ask` are **AskUserQuestion*
   4. **Grade right after the reply:** `✓ Correct` / `◐ Partial` / `✗ Incorrect`. Name which key points they hit and which they missed, then give a short model answer. Grade the idea, not the wording: a correct idea in clumsy words is ✓.
   5. Same as `quiz`: "I don't know" is a gap to teach into, not a ✗, and nothing before the question hints at the answer.
   6. **Use it sparingly.** It costs the user more effort than a click. Where it goes is set by the phases below: 1–2 in Probe, a few in Consolidate, and in `review` sessions. Use `quiz` for everything else.
+  7. **Self-rating (pyramid lessons and reviews).** When the answer will be recorded against a distill node, ask the user to end their answer with how sure they are: `sure`, `unsure` or `guess`. Put this in the question line, for example "…in a sentence or two, then say sure / unsure / guess." It's optional for them; if they leave it out, record no rating.
 
 ## The process: probe → plan → teach → consolidate
 
@@ -176,6 +177,51 @@ When the last node is in place, before wrapping up:
    Tell the user in one line that it's recorded and `/learn:review` will bring it back later.
 
 Phase 4 is for real lessons, the ones that went through Plan. A quick one-off explanation gets neither the questions nor a ledger entry.
+
+## Teaching from a distill pyramid
+
+When the user wants to learn a source that has been distilled (there is a `distill/<slug>/` folder with a `manifest.json`, or they name one), the pyramid *is* the dependency map, already built and checked against the source. The four phases still run, with these changes. The design is `docs/distill.md` §4b and §10.
+
+The learner's confidence per node lives in the review ledger. Drive it only through the script (`PYRAMID` is `distill/<slug>` or the slug):
+
+```bash
+R="${CLAUDE_PLUGIN_ROOT}/scripts/review.py"
+python3 "$R" frontier PYRAMID -n 8     # what they're ready for next, by priority
+python3 "$R" nodes PYRAMID             # confidence per node so far
+echo '[{"node": "humans-fallible", "level": "recall", "result": "pass", "self": "sure", "q": "Why can we never be sure?"}]' \
+  | python3 "$R" node-mark PYRAMID     # one record per graded answer
+python3 "$R" agree PYRAMID NODE partly --reason "..."   # agree | partly | disagree
+python3 "$R" calibration
+```
+
+**Where the content comes from.** Read `distill/<slug>/index.md` first, for the apex and interface. Before teaching a node, read `distill/<slug>/nodes/<id>.md`: its claim (T1), its inputs and how they produce it (T2), its points and its quotes (T3). Teach what the source says, not what you remember about it. Quote the anchors when the wording matters. If you add your own explanation or a modern example, say that it's yours.
+
+**Levels.** Every graded question is about one node, at one level:
+
+| Level | Question shape | Grade with |
+|---|---|---|
+| `recall` | "What does the author claim about…?", in their own words | `short`, or `quiz` when the point is a sharp distinction |
+| `explain` | "Why does that follow? What does it rest on?" (only for nodes with inputs) | `short` |
+| `apply` | a case the source doesn't cover: "What would the author say about…?" | `short` |
+
+Record every graded answer with `node-mark`, right after grading or in small batches; don't save them all for the end. ✓ is `pass`, ◐ is `partial`, ✗ is `fail`. "I don't know" is a `fail` with no self-rating. That's a gap to teach into, not a judgement, and it's what makes the node come back.
+
+**Phase 1 (Probe).** Start from the apex and interface. Ask 1–2 `short` questions about the source's main claim, then `quiz` questions on the interface nodes and premises, recording each one. Then run `frontier`: it shows where their edge is in the pyramid's terms. For a learner new to the source, this is mostly the premises and other leaves.
+
+**Phase 2 (Plan).** The plan is a path through the pyramid: frontier nodes up to the goal (usually the apex, or the part of the source they asked about). Draw the sub-graph you'll teach as the dependency map, using node labels. Two differences from an ordinary lesson:
+- **Premises are the author's starting points, not unconditional truths.** Many are contested. State each as "The author assumes…", check whether the learner accepts it, and don't build as if it were safe ground.
+- **Flagged steps stay visible.** If a basis is flagged `weak`, `missing-step` or `circular`, or a node has low strength, say so when you reach it. The weakest-link trace in `index.md` is good material for "where would a critic push back?"
+
+**Phase 3 (Teach).** Follow `frontier`'s order unless the plan needs a different one, and re-run it after every few nodes. Per node:
+- **Confident errors first.** A node marked `confident error` (they said `sure` and were wrong) is re-taught before anything new.
+- **The quiz-check is a `recall` question.** For a node with inputs, add an `explain` question once its inputs are known: this is the "how could I have discovered this?" edge, tested.
+- **`ask agreement`** on a contested node: once they can explain it, ask whether they agree (`ask`, with no right answer: agree / partly / disagree), and record it with `agree`. If they disagree, discuss the objection on its merits; don't re-teach. Agreement never changes confidence.
+- **`explain unverified`** means an input was never tested. Check it before treating the explanation as solid.
+
+**Phase 4 (Consolidate and record).** The `short` questions across the graph are `explain` and `apply` questions on the nodes nearest the goal, recorded like the others. Don't run `review.py add`: the nodes are already in the ledger through `node-mark`. Finish with `nodes` and, once there are at least 5 rated answers, `calibration`, and tell the user in a line or two:
+- how many nodes they now hold, and at what level,
+- what's next on the frontier,
+- their calibration, if it's notably over- or underconfident.
 
 ## Formatting — math renders as LaTeX
 

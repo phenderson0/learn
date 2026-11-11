@@ -100,6 +100,22 @@ A teaching system for Claude Code, built on two principles: **unconditional trut
 
 Later, `/learn:review` brings back concepts that are due. Each pass doubles the wait before the next review, and a miss resets it, so you're asked about what's fading, not what you just saw.
 
+### Learning from a pyramid
+
+When a source has been distilled, its pyramid *is* the lesson plan, and learn tracks your **confidence per node**:
+
+- **Three levels:** *recall* (you can state the claim), *explain* (you can say why it follows from its inputs), *apply* (you can use it on a new case).
+- **Evidence fades** on the same schedule as reviews, so a node comes back when your confidence has about halved.
+- **The pyramid's structure is used.** You can't explain a conclusion whose inputs you can't recall, and explaining a node gives its untested inputs some credit.
+- **The frontier:** teach always aims at nodes you're ready for, meaning not yet known but with their inputs known, weighted toward the parts of the argument that matter most.
+- **Calibration:** you can add *sure / unsure / guess* to your answers. Confident mistakes are re-taught first, and you'll hear if you're consistently over- or underconfident.
+- **Agreement is separate from understanding.** On contested claims, once you can explain one, you're asked whether you agree. That's recorded, but it never counts against you.
+
+```
+python3 scripts/review.py frontier distill/<slug>     # what you're ready for next
+python3 scripts/review.py nodes distill/<slug>        # where you stand, node by node
+```
+
 ### What's in it
 
 | Piece | What it does |
@@ -111,7 +127,7 @@ Later, `/learn:review` brings back concepts that are due. Each pass doubles the 
 | `agents/researcher.md` | `learn:researcher` checks facts and scopes a topic with WebSearch and WebFetch. |
 | `agents/mermaid-maker.md`, `agents/svg-maker.md` | `learn:mermaid-maker` and `learn:svg-maker` write a diagram, render it, look at the PNG, fix it until it's correct, then publish it to `viz/`. |
 | `hooks/hooks.json` + `scripts/md_log.py` | The md-log hooks. They log your prompts, Claude's text, and quiz questions and answers. They do nothing until you link a file. |
-| `scripts/review.py` | The concept ledger: records each lesson's concepts and schedules reviews. |
+| `scripts/review.py`, `scripts/confidence.py` | The review ledger: lesson concepts and their review schedule, plus learner confidence per pyramid node. |
 | `scripts/render.sh` | Renders Mermaid and SVG to PNG for the maker agents. |
 
 ### Usage

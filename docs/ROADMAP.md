@@ -36,7 +36,7 @@ A digital representation of information that is **neither storage compression no
 - [ ] **Anchors as pointers.** Store anchors in `src/*.yaml` as `{p, start, end}` into `source.md` instead of verbatim quotes. Builders still write quotes, the build script resolves them, and views expand them back. Decided 2026-11-10, see `docs/distill-essence.md`. Needs a spec §8 update and a `distill_build.py` change.
 - [ ] **Track size.** Report canonical-store size over source size per pyramid, and check it grows at most linearly (`docs/distill-essence.md` §4).
 
-- [ ] **Learner confidence per node.** Designed in spec §4b (2026-11-10): three levels (recall, explain, apply), self-rating with calibration, capping by inputs plus a frontier, and agreement on contested nodes. Still to do: ledger schema, a script, and the teach and review integration.
+- [ ] **Learner confidence per node.** Designed in spec §4b (2026-11-10): three levels (recall, explain, apply), self-rating with calibration, capping by inputs plus a frontier, and agreement on contested nodes. Built: `scripts/confidence.py`, the `review.py` node commands, and the teach and review integration. Next: use it on a real lesson and tune the constants.
 - [ ] **"Help me understand" for codebases and projects.** For people who vibe-coded further than they understand. Distill a codebase in agent and human modes, then teach it through `learn`, fully, losing nothing important, until the user could explain the project to someone else. Also applies to books.
 - [ ] **Live distillation during a Claude Code session.** Build or update nodes as the session works. Plugin hooks on Edit/Write and Stop could append to a session pyramid, so you can go back and understand what the model did and why.
 
