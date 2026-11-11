@@ -57,6 +57,8 @@ A digital representation of information that is **neither storage compression no
 
 ## learn features
 
+- [ ] **Review "recent misses" on request.** By default, review only brings back material the system judges you've likely forgotten, so a fail waits for its cooldown (7 days). That's intended. Add an explicit mode for "review what I recently got wrong". Today you can already ask for a specific topic or session.
+
 - [ ] **Assessment by projects, not just questions.** Beyond short-answer and multiple-choice quizzes: show understanding by *using* it to make something new. This needs design per domain:
   - **Code:** build something that uses the concept.
   - **Math and STEM:** work on paper, derivations, applying ideas to new problems.
@@ -69,3 +71,5 @@ A digital representation of information that is **neither storage compression no
   - distill is new and original, while teach, visualize and md-log come from upstream.
   - **The upstream repo has no license.** By default that means its author keeps all rights, and GitHub's terms only cover viewing and forking on GitHub. Worth asking the original author for a license or permission before treating upstream code as reusable elsewhere. (Not legal advice.)
   - Options include keeping a fork with clear credit, splitting distill into its own repo with its own license, or both.
+  - **Leaning (2026-11-10):** if it comes to it, split distill into its own repo that supports the learn plugin, and keep learn as a fork. Not urgent.
+- **Example pyramids stay out of git for now.** The hand-built Mill pyramid will be scrapped once the design settles. A worked example may be added later.
