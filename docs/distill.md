@@ -61,7 +61,7 @@ Status: M1 is done (a hand-built Mill pyramid, findings in `docs/distill-m1.md`)
 | `acceptability` | `uncontested` · `reasonable` · `contested` | Leaves only (premises, details, and ideas with no derivation, support or generalization basis): how acceptable it is as a starting point. Set by the critique pass (§9), with evidence. Feeds strength (§4a). |
 | `points` | list of `{p, c}` | Atomic sub-claims the node carries but doesn't argue for: one clause each, ≤ 35 words, with the ¶ it comes from. They hold the supporting content that would otherwise vanish into T2 (M2 finding 1). See the atomic-points rule below. |
 | `strength` | 0–100 | **Computed, never written by hand.** How well the source supports this claim on its own terms (§4a). |
-| `confidence` | — | **TODO** (see `docs/ROADMAP.md`): the learner's confidence in this node, for the teach skill. Not designed yet. |
+| `confidence` | per learner | **Not stored in the pyramid.** The learner's grasp of this node lives in the learner's ledger, keyed by node id (§4b). |
 
 **Hedges stay in the claim.** A qualifier in the source ("too often", "almost all", "I believe", "in most cases") is content: it sets the claim's scope. T1 must keep it, and T1 may run to 35 words to fit it. Strength is a separate number and never replaces the words. A claim can be strongly argued *and* hedged.
 
@@ -165,6 +165,63 @@ The flags imply a ceiling: `weak` and `missing-step` cap validity at `plausible`
 - a list of the bases that cost the most strength.
 
 The constants are v0 placeholders. This is a simplified form of the gradual semantics used for bipolar argumentation frameworks, such as DF-QuAD. Calibrating against that literature is a research item in `docs/ROADMAP.md`.
+
+## 4b. Learner confidence
+
+Strength is about the *argument*, and it is the same for every reader. Confidence is about *a learner*, and it differs for each one. So confidence never lives in the pyramid's files. It lives in the learner's ledger (`<project>/.claude/learn-ledger.json`) under `nodes`, keyed `<slug>#<node-id>`. Teach and review write it; `distill_build.py` and teach read it.
+
+Like strength, the design is small local measurements plus arithmetic.
+
+### Three levels
+
+| Level | The learner can… | Typical check |
+|---|---|---|
+| `recall` | state the claim (T1) in their own words | short answer: "What does Mill say about…?" |
+| `explain` | say how the node's inputs produce it (bases, T2) | short answer: "Why does that follow?" |
+| `apply` | use it on a case the source doesn't cover | a new case, or a project (`docs/ROADMAP.md`) |
+
+The levels are cumulative: passing a higher level also counts as recall evidence. A node's *grasp* is the highest level with confidence ≥ 0.7.
+
+### Evidence
+
+Every graded question about a node appends one record: `{t, level, result, self}`.
+
+- `result`: `pass` 1 · `partial` 0.5 · `fail` 0, from the ✓/◐/✗ grade.
+- `self`: the learner's own rating, given *with* the answer and before the grade: `sure` 0.9 · `unsure` 0.6 · `guess` 0.3. It's optional, and missing ratings are simply not used for calibration.
+
+**Direct confidence** at a level is the latest result, faded by time: d = result · 2^(−age / h). The half-life h = 7 · 2^streak days (cap 180), where streak counts consecutive passes at that level. This matches the review ledger's cooldowns, so a node is due for review about when its confidence has halved. With no evidence, d is *unknown*, which is not the same as 0.
+
+### Propagation
+
+The pyramid says what depends on what, so evidence on one node says something about its neighbours:
+
+- **Cap by inputs.** You can't really explain a conclusion whose inputs you can't recall. explain(n) ≤ min of recall(i) over the inputs of n's non-illustration bases. Inputs with unknown recall don't cap; instead the result is marked *unverified*.
+- **Weak credit downward.** A pass at `explain` on n gives each input with *no direct evidence* an inferred recall of 0.5 · d. Inferred values never override direct evidence, and they're shown as inferred.
+- **Apply is capped by recall:** apply(n) ≤ recall(n).
+
+### The frontier
+
+A node is *known* at a level when its confidence there is ≥ 0.7. The **frontier** is the set of nodes not yet known at recall whose inputs are all known (premises and other leaves are on the frontier whenever they're unknown). This is the outer fringe from knowledge space theory: what the learner is ready to learn next.
+
+Teach picks from the frontier by **priority = importance · (1 − confidence)**, where importance = 1 + 1 if the node is in the interface + 1 if it's on the weakest-link trace (§4a) + 0.25 per node that uses it. Review uses the same priority for nodes that are due.
+
+### Calibration
+
+Calibration compares self-rating with result over the learner's last 20 rated answers: bias = mean(self − result). A bias above +0.2 means overconfident, and below −0.2 means underconfident. Teach reports this occasionally, not after every question.
+
+**Confident errors** (`sure` and `fail`) get top priority for re-teaching. Research on the hypercorrection effect suggests that errors made with high confidence are often corrected well once feedback is given. This is a lead, to check under the research items.
+
+### Agreement (contested nodes only)
+
+Understanding is not agreeing. On nodes whose acceptability is `contested`, and on contested starting points on the weakest-link trace, teach asks *after* the learner passes `explain`: agree · partly · disagree, plus a one-line reason. It's stored with the node's evidence but **never changes confidence**. Teach uses it to discuss the objection instead of re-teaching.
+
+Idea for later: recompute the apex strength with the learner's agreement standing in for acceptability, giving "how strong this argument is by your lights".
+
+### Stable ids
+
+Ledger keys use node ids, so renaming a node orphans its evidence. Plan: `distill_build.py` keeps a `renames` map in the manifest, and the ledger follows it (not built yet). Splitting or merging nodes across rebuilds is covered by §12.
+
+The constants (0.7, 0.5, the importance weights) are v0 placeholders.
 
 ## 5. Structural rules
 
@@ -355,7 +412,8 @@ Annotations (your own notes on a node) go in `distill/<slug>/annotations/<id>.md
 ## 10. How it connects to the rest of learn
 
 - **teach:** teach a source from its pyramid. Its premises are the source's *starting points*, not unconditional truths. Many of Mill's are contested. Teach treats them as candidates: it checks each one with the learner and states it as "Mill assumes…" when it isn't safe to take at face value. Bases are the motivated steps.
-- **review:** nodes can go into the review ledger, and node T1s make good short-answer keys. How ledger entries reference nodes across rebuilds is in §12.
+- **teach (targeting):** teach picks nodes from the learner's frontier by priority, and asks recall, explain and apply questions per node (§4b). Contested nodes get an agreement question once explained.
+- **review:** nodes go into the review ledger with per-level evidence (§4b), and node T1s make good short-answer keys. A node is due when its confidence has roughly halved. How ledger entries reference nodes across rebuilds is in §12.
 - **Your own knowledge base:** the learn notes plus the ledger form a source (M4).
 
 ## 11. Milestones
