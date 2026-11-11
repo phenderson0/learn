@@ -99,6 +99,8 @@ def main() -> None:
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", "utf-8")
     words = sum(len(p.split()) for p in paras)
+    if paras and not paras[-1].rstrip().rstrip('"\')]*').endswith((".", "?", "!", ":")):
+        print(f"WARNING: last paragraph doesn't end a sentence — check --end-line: ...{paras[-1][-60:]!r}")
     print(f"{len(paras)} paragraphs, {words} words -> {out}"
           + (f"; redacted ¶{redact.start + 1}–{redact.stop} in builder.md" if redact else ""))
 

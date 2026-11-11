@@ -1,8 +1,8 @@
-# distill — design (draft v1)
+# distill — design (draft v2)
 
 `/learn:distill` turns a source (an essay, a book, your own learn lessons, later a codebase) into a **pyramid**: a layered structure of ideas where each layer is generated from the one below it by explicit, typed operations, and every idea traces back to the exact place in the source it came from.
 
-Status: design only. Nothing here is built yet. v1 resolves the review notes on v0 (contradictions, the coverage test, the data model). Items deferred to M4 are collected in §12.
+Status: M1 is done (a hand-built Mill pyramid, findings in `docs/distill-m1.md`). M2 is in progress. v2 folds in the M1 findings: an `applies` edge, satellites, explicit premises, a rebuttal placement rule, locator quotes, YAML as the canonical store, a critique pass, and hierarchical views. Items deferred to M4 are collected in §12.
 
 ## 1. What it is, and what it isn't
 
@@ -40,7 +40,8 @@ Status: design only. Nothing here is built yet. v1 resolves the review notes on 
 | **node** | One unit in the pyramid. Kinds: `idea`, `detail`, `mount`. |
 | **basis** | How a node is produced: a typed operation over a set of lower nodes. Always stored on the higher node. |
 | **level** | Longest path from the node down to the bottom, following bases only. Computed, never set by hand. Lateral edges don't affect it. |
-| **premise** | An `idea` with `origin: source` whose only bases are `illustration`, or that has none. These are the source's starting points. They are computed, not declared. |
+| **premise** | A starting point the source takes as given. **Declared** with `premise: true` by the builder, only on author-voiced source ideas, and checked by the audit (§7). M1 showed the computed version (any leaf idea) marks most of the pyramid. |
+| **satellite** | A node outside the apex's subtree that is joined to it only by lateral edges: opponent views, rebuttals with no node to defend, applications, scope notes. About 25% of Mill's nodes. A node joined to nothing is an orphan, which is an error. |
 | **apex** | The single top node. |
 | **interface** | The apex plus the inputs of its bases. If that's fewer than 3 nodes, extend one level down until there are 3 or no inputs remain. |
 | **mount** | A node in one pyramid that stands for a whole other pyramid, through its interface. |
@@ -57,6 +58,14 @@ Status: design only. Nothing here is built yet. v1 resolves the review notes on 
 | `bases` | list | How it's produced (§4). |
 | `lateral` | list | Non-hierarchical relations (§4). |
 | `flags` | list | Node-level flags (§4). |
+| `acceptability` | `uncontested` · `reasonable` · `contested` | Leaves only (premises, details, and ideas with no derivation, support or generalization basis): how acceptable it is as a starting point. Set by the critique pass (§9), with evidence. Feeds strength (§4a). |
+| `points` | list of `{p, c}` | Atomic sub-claims the node carries but doesn't argue for: one clause each, ≤ 35 words, with the ¶ it comes from. They hold the supporting content that would otherwise vanish into T2 (M2 finding 1). See the atomic-points rule below. |
+| `strength` | 0–100 | **Computed, never written by hand.** How well the source supports this claim on its own terms (§4a). |
+| `confidence` | — | **TODO** (see `docs/ROADMAP.md`): the learner's confidence in this node, for the teach skill. Not designed yet. |
+
+**Hedges stay in the claim.** A qualifier in the source ("too often", "almost all", "I believe", "in most cases") is content: it sets the claim's scope. T1 must keep it, and T1 may run to 35 words to fit it. Strength is a separate number and never replaces the words. A claim can be strongly argued *and* hedged.
+
+**Points are atomic.** A point states one clause. When the source joins a claim to its reason, a second limb, or its consequence ("X, because Y"; "not only X but Y"; "X, so that Z"), split it into separate points, or make the reason a basis if it argues for the node. In M2 most of the remaining loss was half-recovered compound points: a regenerator keeps the first clause and drops the "why" (M2 finding 8). The build check warns on points that look compound; the builder splits them, or leaves them if the clauses can't stand alone.
 
 **Faithfulness rule:** content is only ever attributed to the source through anchors on `origin: source` nodes. `structural` and `gap` nodes never have anchors, and every view shows their origin. The builder may add structure, but never words in the author's mouth.
 
@@ -65,7 +74,7 @@ Status: design only. Nothing here is built yet. v1 resolves the review notes on 
 | Tier | Content | Limit | Lives in |
 |---|---|---|---|
 | T0 | label | ≤ 6 words | parent's input list, index |
-| T1 | the claim, stated plainly | 1 sentence, ≤ 30 words | parent's input list, index |
+| T1 | the claim, stated plainly, hedges kept | 1 sentence, ≤ 30 words (35 with qualifiers) | parent's input list, index |
 | T2 | explanation: what the node says and how its bases produce it | ≤ 150 words | node file |
 | T3 | anchors (quote + ¶) and residual specifics | as needed | node file |
 
@@ -90,6 +99,8 @@ A basis lists the lower nodes the node is built from, read conjunctively: `deriv
 
 Details always attach through an `illustration` (or `support`) basis on the idea above them, never by a field on the detail itself.
 
+**Rebuttals:** a rebuttal that defends a node in the pyramid is a `support` input of that node, plus a `rebuts` edge to the objection. Only a rebuttal with no node to defend is a satellite.
+
 ### Lateral (no hierarchy, can cross levels)
 
 | Type | Meaning |
@@ -97,6 +108,7 @@ Details always attach through an `illustration` (or `support`) basis on the idea
 | `objects` | States an objection to the target. Usually from a `voice: opponent` node. |
 | `rebuts` | Answers an objection. |
 | `qualifies` | Limits the target's scope: conditions, exceptions. Kept lateral, because a limit is not support. |
+| `applies` | Applies the target to a new case: a corollary or practical consequence, such as Mill's ¶46 on the manner of discussion. Not support, since the target doesn't depend on it. |
 | `contrasts` | A deliberate opposite or alternative. |
 | `same-as` | The same idea in another pyramid (§6). |
 
@@ -119,6 +131,41 @@ Node flags record a problem with a node:
 
 **Circular arguments:** a basis flagged `circular` is stored, but it's excluded from level computation and from the cycle check. So the circularity is recorded faithfully, and upward edges still form an acyclic graph.
 
+**Objections:** an opponent node has an `objects` edge to the node it attacks, and its rebuttal has a `rebuts` edge to the objection. Both are needed to compute strength.
+
+## 4a. Strength
+
+Strength is *how well the source supports a claim on its own terms*, not whether the claim is true. It is built so that agents only make small, checkable, local judgements, and arithmetic does the rest.
+
+**Local judgements** are made by the critique pass, each on a 3-level scale with a quoted reason. Three levels keep judgements repeatable; agreement between two critics is measured in §7.
+
+| Judged on | Field | Levels → value |
+|---|---|---|
+| each basis | `validity`: does this inference hold? | `sound` 1.0 · `plausible` 0.75 · `weak` 0.4 |
+| each leaf | `acceptability` (§3) | `uncontested` 0.95 · `reasonable` 0.75 · `contested` 0.5 |
+
+The flags imply a ceiling: `weak` and `missing-step` cap validity at `plausible`. A `circular` basis contributes nothing.
+
+**Propagation** is done by script, bottom up. With *s* for input strengths and *v* for validity:
+
+| Basis | Value |
+|---|---|
+| `derivation` | v · min(s): a chain is only as strong as its weakest link |
+| `support` | v · (1 − ∏(1 − sᵢ)): independent supports accumulate |
+| `generalization` | v · mean(s) · min(1, 0.5 + 0.1·n) for n instances: more cases help, with a cap |
+| `illustration` | no basis value. Adds a bonus of +0.05 per example (max 0.1) of the remaining gap: s + (1 − s)·bonus |
+
+- **A node** combines its basis values the same way supports combine: 1 − ∏(1 − bᵢ). It then gets the illustration bonus. A leaf's strength is its acceptability.
+- **Attack:** an objection with strength *a* lowers its target to s · (1 − 0.5 · a · (1 − r)), where *r* is the strongest rebuttal's strength. So a well-answered objection costs almost nothing, and an unanswered one costs up to half.
+- Strength is shown as 0–100.
+
+**What it gives:**
+- the apex strength, the whole argument's strength,
+- a **weakest-link trace**: the path of minimum contribution from the apex down, which shows what the argument most depends on,
+- a list of the bases that cost the most strength.
+
+The constants are v0 placeholders. This is a simplified form of the gradual semantics used for bipolar argumentation frameworks, such as DF-QuAD. Calibrating against that literature is a research item in `docs/ROADMAP.md`.
+
 ## 5. Structural rules
 
 1. **Fan-in ≤ 7.** No node has more than 7 inputs in total, across all of its bases. If more are needed, chunk them into `structural` intermediate nodes using `generalization`. Fan-out is unrestricted.
@@ -127,7 +174,7 @@ Node flags record a problem with a node:
    - A `structural` node has a basis whose inputs are all grounded.
    - A `gap` node is grounded by the flagged basis that uses it.
    - A `mount` is grounded by its child's coverage report.
-3. **Anchors are verbatim** after normalization (§8), and a script checks them.
+3. **Anchors are verbatim** after normalization (§8), and a script checks them. A quote is a *locator*: 25 words or fewer, longer only where the exact wording carries weight. Anchors were the largest authored part in M1.
 4. **One idea, one node.** Restatements are merged and flagged `repeated`.
 5. **Acyclic upward edges,** not counting bases flagged `circular`.
 6. **One apex.** If the source has several equal theses, the apex is a `structural` node that generalizes over them, so no thesis is promoted above another.
@@ -165,7 +212,11 @@ Set A is used for the repair loop. **Set B is held out** and only used for the f
 
 ### Content test: regenerate, then judge
 
-1. **Regenerator** (fresh agent, sees only the pyramid): starts at `index.md`, traverses with a node budget, and writes out every claim it can recover from the pyramid, in its own words. It never sees any claim set. It logs which nodes it opened.
+1. **Regenerator** (fresh agent, sees only the pyramid), run twice:
+   - **Full run:** it must open every reachable node. This measures content loss only.
+   - **Budgeted run:** it starts at `index.md` and navigates freely within a node budget. This measures traversal: what an agent actually finds. M2 showed agents give up on deep branches well before their budget runs out.
+
+   Both runs write out every claim they can recover, in their own words, and log which nodes they opened. Neither ever sees a claim set. Recall is scored on the full run; traversal cost and the gap between the two runs are reported separately.
 2. **Judge** (a separate fresh agent): matches the regenerated claims against the claim set. It reports:
    - **recall** by weight: claims recovered out of claims in the set,
    - **spurious claims**: regenerated claims that aren't in the source (pyramid hallucinations, or a misread `voice`),
@@ -206,22 +257,30 @@ distill/<slug>/
   source/
     source.md        # normalized, ¶-numbered full source
     builder.md       # what the builder sees (same as source.md unless redacted)
-  index.md           # agent entry: apex, interface, and the top levels only (bounded)
-  map.md             # human entry: apex + interface diagram (human mode only)
-  nodes/<id>.md      # frontmatter + input list + T2 + T3
+  src/*.yaml         # CANONICAL: the nodes, one file per branch or section
+  index.md           # generated. Agent entry: apex, interface, top levels (bounded)
+  nodes/<id>.md      # generated. Input list + lateral + used-by + T2 + T3
+  map.md             # generated, human mode. Apex + interface diagram
+  map.canvas         # generated, human mode. Obsidian Canvas, apex at top, one row per depth
+  outline.md         # generated, human mode. The pyramid as a foldable nested list
   claims-a.jsonl
   claims-b.jsonl     # held out
   coverage.md
 ```
 
+**`src/*.yaml` is the canonical store** (changed after M1). Builders, whether human or agent, write one YAML file per branch or section. `scripts/distill_build.py` checks it and generates everything else, which keeps input lists consistent. Never edit generated files.
+
 **Index is hierarchical, not flat.** A flat list at T0+T1 costs about 45 tokens per node and grows with the source, which undercuts "pay only for depth". So:
-- `index.md` holds the apex, the interface and the levels below them until it reaches about 1.5k tokens. It ends with a pointer saying where the listing stops. Its size doesn't depend on the size of the source.
+- `index.md` holds the apex, the interface and the levels below them until it reaches about 1.5k tokens. It lists only the satellites attached to the nodes it shows. It ends with a pointer saying where the listing stops. Its size doesn't depend on the size of the source.
 - Every node file opens with its **input list**: its inputs at T0+T1 with their IDs, ≤ 7 × ~45 tokens. An agent goes deeper one node at a time, and each step costs a bounded amount.
 - For grep-style lookup the script can also generate an optional flat `index-full.md`. Agents aren't told to read it.
 
-**Human view:** `map.md` shows the apex and interface as one diagram. Every node file with inputs renders a small mermaid diagram of itself plus its inputs (≤ 7). There are no per-level diagrams.
+**Human view:**
+- `map.md` shows the apex and interface as one diagram.
+- Every node file with inputs renders a small mermaid diagram of itself plus its inputs (≤ 7).
+- Obsidian's graph view is force-directed and puts the apex in the middle. So two hierarchical views are generated: `map.canvas`, a Canvas laid out as a tree with the apex on top, and `outline.md`, a foldable nested list. In both, a node with several parents appears under its first parent, and satellites appear under the node they're joined to.
 
-**Mode** (`human` · `agent`) is set at build time and stored in the manifest. `agent` mode writes T2 tersely and skips `map.md` and the per-node diagrams. Use it for codebases, workflows and system-prompt material.
+**Mode** (`human` · `agent`) is set at build time and stored in the manifest. `agent` mode writes T2 tersely, skips `map.md`, `map.canvas` and `outline.md`, and leaves diagrams and wikilinks out of node files. Use it for codebases, workflows and system-prompt material.
 
 **Source normalization** (done by script):
 - NFKC Unicode, straight quotes and apostrophes, collapsed whitespace, line-break hyphenation joined.
@@ -233,6 +292,8 @@ distill/<slug>/
 **Location:** `<project>/distill/` by default. It's gitignored in this plugin repo. In your own learning project, commit it if you want it versioned.
 
 ### Example node
+
+This shows the *generated* node file. In `src/*.yaml` the same node is one list item with the fields from the frontmatter plus `label`, `claim`, `anchors` (`{p, q}`), `t2` and an optional `residual`. Everything else is generated.
 
 ```markdown
 ---
@@ -281,11 +342,13 @@ Pipeline:
 1. **Ingest:** normalize the source, number paragraphs, write `source/` and the manifest.
 2. **Extract** candidate bottom nodes per section (parallel subagents), with anchors, `voice` and weight hints.
 3. **Merge** restatements (`repeated`) and attach details through `illustration` bases.
-4. **Build upward in rounds.** Group nodes by the *logic* of the argument, not by the author's section breaks. Write each parent with typed bases, flag gaps as they appear, and use `structural` nodes when fan-in would exceed 7. Stop at one apex. Rounds are a build convenience: levels are recomputed from the graph afterwards, since a parent's inputs may sit at different depths.
-5. **Interface:** computed by the rule in §2.
-6. **Render:** the input lists, `index.md`, and in human mode `map.md` and the diagrams.
-7. **Test** (§7), using fresh agents.
-8. **Repair** against set A until the targets pass, then score once on set B.
+4. **Build upward in rounds.** Upper levels are built from the lower nodes' T1s, not the source text. Group nodes by the *logic* of the argument, not by the author's section breaks. Write each parent with typed bases, flag gaps as they appear, and use `structural` nodes when fan-in would exceed 7. Stop at one apex. Rounds are a build convenience: levels are recomputed from the graph afterwards, since a parent's inputs may sit at different depths.
+5. **Critique pass** (a separate agent, source in hand): add gap flags (`weak`, `missing-step`, `unsupported`, `circular`), set `validity` on every basis and `acceptability` on every leaf (§4a) with a quoted reason, check premise declarations, and check that hedges survived in T1. In M1, a builder focused on mapping flagged nothing; in M2 the audit found 12 of 17 nodes missing a flag.
+6. **Split compound points** flagged by the build check (§3, atomic points). This is mechanical and doesn't change the structure.
+7. **Interface:** computed by the rule in §2.
+8. **Render:** `scripts/distill_build.py`.
+9. **Test** (§7), using fresh agents.
+10. **Repair** against set A until the targets pass, then score once on set B.
 
 Annotations (your own notes on a node) go in `distill/<slug>/annotations/<id>.md`. They're never generated or overwritten, so they survive a rebuild.
 
